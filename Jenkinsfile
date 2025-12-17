@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'nodejs'
+        nodejs 'nodejs'   // имя инструмента из Global Tool Configuration
     }
 
     environment {
+        ENV_NAME = ''
         APP_PORT = ''
         IMAGE_NAME = ''
         CONTAINER_NAME = ''
-        ENV_NAME = ''
     }
 
     stages {
@@ -18,24 +18,27 @@ pipeline {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'main') {
-                        ENV_NAME = 'prod'
-                        APP_PORT = '3000'
-                        IMAGE_NAME = 'nodemain:v1.0'
-                        CONTAINER_NAME = 'node-main'
+                        env.ENV_NAME = 'prod'
+                        env.APP_PORT = '3000'
+                        env.IMAGE_NAME = 'nodemain:v1.0'
+                        env.CONTAINER_NAME = 'node-main'
                     } else if (env.BRANCH_NAME == 'dev') {
-                        ENV_NAME = 'dev'
-                        APP_PORT = '3001'
-                        IMAGE_NAME = 'nodedev:v1.0'
-                        CONTAINER_NAME = 'node-dev'
+                        env.ENV_NAME = 'dev'
+                        env.APP_PORT = '3001'
+                        env.IMAGE_NAME = 'nodedev:v1.0'
+                        env.CONTAINER_NAME = 'node-dev'
                     } else {
                         error "Unsupported branch: ${env.BRANCH_NAME}"
                     }
 
                     echo """
-                    ENV_NAME=${ENV_NAME}
-                    APP_PORT=${APP_PORT}
-                    IMAGE_NAME=${IMAGE_NAME}
-                    CONTAINER_NAME=${CONTAINER_NAME}
+                    =========================
+                    Branch      : ${env.BRANCH_NAME}
+                    Environment : ${env.ENV_NAME}
+                    Port        : ${env.APP_PORT}
+                    Image       : ${env.IMAGE_NAME}
+                    Container   : ${env.CONTAINER_NAME}
+                    =========================
                     """
                 }
             }
@@ -49,7 +52,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Build stage for ${ENV_NAME}"
+                echo "Build stage for ${env.ENV_NAME}"
                 sh 'node -v'
                 sh 'npm -v'
                 sh 'npm install'
@@ -58,30 +61,30 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo "Test stage for ${ENV_NAME}"
+                echo "Test stage for ${env.ENV_NAME}"
                 sh 'npm test || true'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image: ${IMAGE_NAME}"
-                sh "docker build -t ${IMAGE_NAME} ."
+                echo "Building Docker image ${env.IMAGE_NAME}"
+                sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Deploy') {
             steps {
-                echo "Deploying ${ENV_NAME} on port ${APP_PORT}"
+                echo "Deploying ${env.ENV_NAME} on port ${env.APP_PORT}"
 
                 sh """
-                  docker rm -f ${CONTAINER_NAME} || true
+                  docker rm -f ${env.CONTAINER_NAME} || true
 
                   docker run -d \
-                    --name ${CONTAINER_NAME} \
-                    -p ${APP_PORT}:${APP_PORT} \
-                    -e PORT=${APP_PORT} \
-                    ${IMAGE_NAME}
+                    --name ${env.CONTAINER_NAME} \
+                    -p ${env.APP_PORT}:${env.APP_PORT} \
+                    -e PORT=${env.APP_PORT} \
+                    ${env.IMAGE_NAME}
                 """
             }
         }
@@ -89,10 +92,13 @@ pipeline {
 
     post {
         success {
-            echo "Deployment successful for ${ENV_NAME}"
+            echo "Deployment successful for ${env.ENV_NAME}"
         }
         failure {
-            echo "Deployment failed for ${ENV_NAME}"
+            echo "Deployment failed for ${env.ENV_NAME}"
+        }
+        always {
+            echo "Pipeline finished for branch ${env.BRANCH_NAME}"
         }
     }
 }
