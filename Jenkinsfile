@@ -5,12 +5,6 @@ pipeline {
         nodejs 'nodejs'   // имя инструмента из Global Tool Configuration
     }
 
-    environment {
-        ENV_NAME = ''
-        APP_PORT = ''
-        IMAGE_NAME = ''
-        CONTAINER_NAME = ''
-    }
 
     stages {
 
